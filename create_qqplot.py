@@ -50,7 +50,10 @@ def main(args):
         raise Exception("Column '{0}' was not found.".format(args.col))
     col_id = header.index(args.col)
     for line in f:
-        observed.append(float(line.split("\t")[col_id]))
+        o = line.rstrip("\r\n").split("\t")[col_id]
+        if o.upper() == "NA" or o.upper() == "NAN":
+            continue
+        observed.append(float(o))
 
     observed = np.array(observed, dtype=float)
     observed = np.sort(observed)
