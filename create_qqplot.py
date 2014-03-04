@@ -38,6 +38,7 @@ def main(args):
     if f.read(3) == '\x1f\x8b\x08':
         # File is not zipped.
         gzipped = True
+    f.seek(0)
     
     if gzipped:
         f.close()
