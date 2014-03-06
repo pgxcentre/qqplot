@@ -64,7 +64,7 @@ def main(args):
     expected = -1 * np.log10(expected / len(observed))
 
     fig, axe = plt.subplots(1, 1)
-    axe.plot(expected, observed, "o", ms=1, color='b')
+    axe.plot(expected, observed, "o", ms=1, mec=args.color, mfc=args.color)
     axe.set_xlabel(args.xlabel)
     axe.set_ylabel(args.ylabel)
     axe.set_title(args.title)
@@ -165,6 +165,14 @@ if __name__ == '__main__':
                             help="DPI of the exported image",
                             dest="dpi",
                             default=150
+                       )
+
+    parser.add_argument(
+                            "--color",
+                            type=str,
+                            help="The color of the points",
+                            dest="color",
+                            default="#000000"
                        )
 
     parser.add_argument(
