@@ -63,6 +63,10 @@ def main(args):
     expected = np.arange(1, len(observed) + 1, dtype=float)
     expected = -1 * np.log10(expected / len(observed))
 
+    # Some assertions
+    assert np.min(expected) >= 0
+    assert np.min(observed) >= 0
+
     fig, axe = plt.subplots(1, 1)
     axe.plot(expected, observed, "o", ms=1, mec=args.color, mfc=args.color)
     axe.set_xlabel(args.xlabel)
@@ -79,6 +83,10 @@ def main(args):
     c975 = -1 * np.log10(c975)
     c025 = -1 * np.log10(c025)
     axe.fill_between(expected, c025, c975, facecolor='#cccccc', edgecolor='#cccccc')
+
+    # Making sure the axis are not negative
+    axe.set_xlim(0, axe.get_xlim()[1])
+    axe.set_ylim(0, axe.get_ylim()[1])
 
     if args.format == "X11":
         plt.show()
