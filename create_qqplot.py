@@ -1,15 +1,13 @@
 #!/usr/bin/env python2.7
 # -*- coding: utf-8 -*-
 
-import os
-import os.path
-import ctypes
-import sys
 import argparse
 import re
-import math
 import gzip
+
 import numpy as np
+import scipy.stats
+
 
 def main(args):
     import matplotlib as mpl
@@ -21,32 +19,22 @@ def main(args):
 
     # Read the file.
     observed = []
-    
-    # Configure the R Math library.
-    rlib = ctypes.cdll.LoadLibrary(args.rlib)
-    rlib.qbeta.restype = ctypes.c_double
-    qbeta = lambda p, a, b: rlib.qbeta(ctypes.c_double(p), 
-                                       ctypes.c_double(a),
-                                       ctypes.c_double(b),
-                                       0,
-                                       0)
 
-    # TODO: Handle les fichiers zippes
     # Read three bytes of the file to see if zipped.
     gzipped = False
-    f = open(args.filename, 'rb')
-    if f.read(3) == '\x1f\x8b\x08':
+    f = open(args.filename, "rb")
+    if f.read(3) == "\x1f\x8b\x08":
         # File is not zipped.
         gzipped = True
     f.seek(0)
-    
+
     if gzipped:
         f.close()
-        f = gzip.open(args.filename, 'rb') 
-    
+        f = gzip.open(args.filename, "rb")
+
     header = f.readline()
     header = [re.sub(r"\r|\n", "", elem) for elem in header.split("\t")]
-    if not args.col in header:
+    if args.col not in header:
         raise Exception("Column '{0}' was not found.".format(args.col))
     col_id = header.index(args.col)
     for line in f:
@@ -60,7 +48,12 @@ def main(args):
     # Compute -log_10(p_value)
     observed = -1 * np.log10(observed)
 
-    expected = np.arange(1, len(observed) + 1, dtype=float)
+    n = len(observed) + 1
+    expected = np.arange(1, n, dtype=float)
+    qbeta = scipy.stats.beta.ppf
+    c975 = -1 * np.log10(qbeta(0.975, expected, n - expected + 1))
+    c025 = -1 * np.log10(qbeta(0.025, expected, n - expected + 1))
+
     expected = -1 * np.log10(expected / len(observed))
 
     # Some assertions
@@ -72,17 +65,9 @@ def main(args):
     axe.set_xlabel(args.xlabel)
     axe.set_ylabel(args.ylabel)
     axe.set_title(args.title)
-    # scipy.stats.beta.ppf(prb, a, b)
-    c975 = np.zeros(len(observed))
-    c025 = np.zeros(len(observed))
 
-    for i in xrange(1, len(observed) + 1):
-        c975[i - 1] = qbeta(0.975, i, len(observed) - i + 1)
-        c025[i - 1] = qbeta(0.025, i, len(observed) - i + 1)
-    
-    c975 = -1 * np.log10(c975)
-    c025 = -1 * np.log10(c025)
-    axe.fill_between(expected, c025, c975, facecolor='#cccccc', edgecolor='#cccccc')
+    axe.fill_between(expected, c025, c975, facecolor="#cccccc",
+                     edgecolor="#cccccc")
 
     # Making sure the axis are not negative
     axe.set_xlim(0, axe.get_xlim()[1])
@@ -98,103 +83,88 @@ def main(args):
     f.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-                                            description = ("Help creating "
-                                                           "beautiful graphs of "
-                                                           "linkage results.")
-                                    )
+        description="Create uniform QQ plot for p-values."
+    )
 
     parser.add_argument(
-                            "--filename",
-                            type=str,
-                            help="Data file",
-                            dest="filename",
-                            metavar="DATA_FILE",
-                            required=True
-                       )
+        "--filename",
+        type=str,
+        help="Data file",
+        dest="filename",
+        metavar="DATA_FILE",
+        required=True
+    )
 
     parser.add_argument(
-                            "--col",
-                            type=str,
-                            help="Column title to read data from",
-                            dest="col",
-                            metavar="COL_NAME",
-                            default="P"
-                       )
+        "--col",
+        type=str,
+        help="Column title to read data from",
+        dest="col",
+        metavar="COL_NAME",
+        default="P"
+    )
 
     parser.add_argument(
-                            "--title",
-                            type=str,
-                            help="Title for the graph",
-                            dest="title",
-                            metavar="TITLE",
-                            default=""
-                       )
+        "--title",
+        type=str,
+        help="Title for the graph",
+        dest="title",
+        metavar="TITLE",
+        default=""
+    )
 
     parser.add_argument(
-                            "--xlabel",
-                            type=str,
-                            help="Title for x axis",
-                            dest="xlabel",
-                            metavar="LABEL",
-                            default="$-\\log_{10}(Expected)$"
-                       )
+        "--xlabel",
+        type=str,
+        help="Title for x axis",
+        dest="xlabel",
+        metavar="LABEL",
+        default="$-\\log_{10}(Expected)$"
+    )
 
     parser.add_argument(
-                            "--ylabel",
-                            type=str,
-                            help="Title for y axis",
-                            dest="ylabel",
-                            metavar="LABEL",
-                            default="$-\\log_{10}(Observed)$"
-                       )
+        "--ylabel",
+        type=str,
+        help="Title for y axis",
+        dest="ylabel",
+        metavar="LABEL",
+        default="$-\\log_{10}(Observed)$"
+    )
 
     parser.add_argument(
-                            "--format",
-                            type=str,
-                            help="Output file format",
-                            dest="format",
-                            default="png",
-                            choices=["png", "ps", "pdf", "X11"]
-                       )
+        "--format",
+        type=str,
+        help="Output file format",
+        dest="format",
+        default="png",
+        choices=["png", "ps", "pdf", "X11"]
+    )
 
     parser.add_argument(
-                            "--out",
-                            type=str,
-                            help="Output file name",
-                            dest="out",
-                            default="qqplot"
-                       )
+        "--out",
+        type=str,
+        help="Output file name",
+        dest="out",
+        default="qqplot"
+    )
 
     parser.add_argument(
-                            "--dpi",
-                            type=int,
-                            help="DPI of the exported image",
-                            dest="dpi",
-                            default=150
-                       )
+        "--dpi",
+        type=int,
+        help="DPI of the exported image",
+        dest="dpi",
+        default=150
+    )
 
     parser.add_argument(
-                            "--color",
-                            type=str,
-                            help="The color of the points",
-                            dest="color",
-                            default="#000000"
-                       )
-
-    parser.add_argument(
-                            "--Rlib",
-                            type=str,
-                            help=("R math stand-alone C library (.so) "
-                                  "to compute qbeta efficiently"),
-                            dest="rlib",
-                            metavar="RMath",
-                            default=os.path.join(
-                                os.path.dirname(__file__),
-                                "libRmath.so"
-                            )
-                        )
+        "--color",
+        type=str,
+        help="The color of the points",
+        dest="color",
+        default="#000000"
+    )
 
     args = parser.parse_args()
     try:
